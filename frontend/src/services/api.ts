@@ -3,10 +3,11 @@
  * Centralized API communication with the FastAPI backend
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Hardcoding the Render live URL for the hackathon deployment to skip Vercel env variable setup
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://civicplusdemo.onrender.com';
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const url = `${API_BASE}${endpoint}`;
+  const url = `${API_BASE_URL}${endpoint}`;
   const res = await fetch(url, {
     ...options,
     headers: {
