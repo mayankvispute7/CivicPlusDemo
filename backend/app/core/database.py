@@ -15,12 +15,13 @@ engine = create_engine(
 if settings.use_sqlite:
     @event.listens_for(engine, "connect")
     def connect(dbapi_connection, connection_record):
-        dbapi_connection.enable_load_extension(True)
-        try:
-            dbapi_connection.load_extension("mod_spatialite")
-        except Exception:
-            pass  # SpatiaLite not available, will use raw lat/lng
-        dbapi_connection.enable_load_extension(False)
+        if hasattr(dbapi_connection, "enable_load_extension"):
+            try:
+                dbapi_connection.enable_load_extension(True)
+                dbapi_connection.load_extension("mod_spatialite")
+                dbapi_connection.enable_load_extension(False)
+            except Exception:
+                pass  # SpatiaLite not available, will use raw lat/lng
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
