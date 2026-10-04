@@ -3,19 +3,25 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { api } from '@/services/api';
-import type { Simulation, Incident, ScenarioResult, Intervention } from '@/types';
+import type { Complaint, Intervention } from '@/types';
 import ProcessingSequence from '@/components/common/ProcessingSequence';
-import { SIMULATION_STEPS, formatINR, SEVERITY_COLORS } from '@/lib/constants';
+import { SIMULATION_STEPS, formatINR } from '@/lib/constants';
+
+interface SimulationResult {
+  id: number;
+  simulation_id?: string;
+  status?: string;
+  scenarios: Intervention[];
+  ai_recommendation_reason?: string;
+}
 
 function SimulationsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const incidentIdStr = searchParams.get('incident_id');
-  const incidentId = incidentIdStr ? parseInt(incidentIdStr, 10) : null;
 
-  const [incident, setIncident] = useState<Incident | null>(null);
-  const [simulation, setSimulation] = useState<Simulation | null>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [incident, setIncident] = useState<Complaint | null>(null);
+  const [simulation, setSimulation] = useState<SimulationResult | null>(null);
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
@@ -23,24 +29,25 @@ function SimulationsContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (incidentId) {
+    if (incidentIdStr) {
       loadData();
     } else {
-      setLoading(false); // No incident selected
+      setLoading(false);
     }
-  }, [incidentId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incidentIdStr]);
 
   async function loadData() {
     try {
-      if (!incidentId) return;
-      const incRes = await api.incidents.get(incidentId);
+      if (!incidentIdStr) return;
+      const incRes = await api.incidents.get(incidentIdStr);
       setIncident(incRes);
 
-      if (incRes.status === 'SIMULATED' || incRes.status === 'RECOMMENDED' || incRes.status === 'APPROVED' || incRes.status === 'IN_PROGRESS' || incRes.status === 'VERIFIED' || incRes.status === 'CLOSED') {
+      if (['SIMULATED', 'RECOMMENDED', 'APPROVED', 'IN_PROGRESS', 'VERIFIED', 'CLOSED'].includes(incRes.status ?? '')) {
         try {
-          const simRes = await api.simulations.getByIncident(incidentId);
-          setSimulation(simRes);
-        } catch (simErr) {
+          const simRes = await api.simulations.getByIncident();
+          setSimulation(simRes as SimulationResult);
+        } catch {
           console.warn('Incident status suggests simulation exists, but none found. Resetting state.');
           setIncident({ ...incRes, status: 'DETECTED' });
         }
@@ -53,12 +60,11 @@ function SimulationsContent() {
   }
 
   async function handleStartSimulation() {
-    if (!incidentId) return;
+    if (!incidentIdStr) return;
     setIsSimulating(true);
     try {
-      const res = await api.simulations.run(incidentId);
-      setSimulation(res);
-      // Wait for animation to finish before updating status
+      const res = await api.simulations.run();
+      setSimulation(res as SimulationResult);
     } catch (err) {
       console.error('Simulation failed', err);
       setIsSimulating(false);
@@ -74,29 +80,19 @@ function SimulationsContent() {
 
   function handleGenerateRoadmap() {
     setIsGeneratingRoadmap(true);
-    // Simulate AI thinking time
     setTimeout(() => {
       setIsGeneratingRoadmap(false);
       setShowRoadmap(true);
     }, 1500);
   }
 
-  async function handleApprove(scenario: ScenarioResult) {
-    if (!incidentId || !simulation) return;
+  async function handleApprove(scenario: Intervention) {
+    if (!incidentIdStr || !simulation) return;
     setIsApproving(true);
     try {
-      let intervention;
-      try {
-        intervention = await api.decisions.getByIncident(incidentId);
-      } catch (e) {
-        // If it doesn't exist yet, we generate the recommendation on the fly
-        intervention = await api.decisions.recommend(incidentId);
-      }
-      
-      await api.decisions.approve(intervention.id, 'Operator');
-      
-      // Then navigate to work orders
-      router.push(`/work-orders?incident_id=${incidentId}`);
+      await api.decisions.recommend();
+      await api.cases.selectIntervention(incidentIdStr, scenario.intervention_id);
+      router.push(`/work-orders?incident_id=${incidentIdStr}`);
     } catch (err) {
       console.error('Approval failed', err);
       setIsApproving(false);
@@ -133,7 +129,7 @@ function SimulationsContent() {
             Simulation Engine
           </h1>
           <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            Target: <span style={{ fontFamily: 'var(--font-mono)' }}>{incident.incident_id}</span> — {incident.title}
+            Target: <span style={{ fontFamily: 'var(--font-mono)' }}>{incident.complaint_id}</span> — {incident.title}
           </div>
         </div>
         {!isSimulated && (
@@ -153,75 +149,75 @@ function SimulationsContent() {
           
           {/* Scenarios Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
-            {simulation.scenarios.map((scenario) => (
-              <div key={scenario.id} className={`scenario-card ${scenario.is_recommended ? 'recommended' : ''}`}>
-                <div className="sc-header">
-                  <div className="sc-name">{scenario.scenario_label || scenario.scenario_name}</div>
-                  {scenario.is_recommended && (
-                    <div className="badge badge-success" style={{ background: 'var(--accent-blue)', color: 'white' }}>
-                      RECOMMENDED
+            {simulation.scenarios.map((scenario) => {
+              const isRecommended = scenario.ranking_tier === 'RECOMMENDED';
+              return (
+                <div key={scenario.intervention_id} className={`scenario-card ${isRecommended ? 'recommended' : ''}`}>
+                  <div className="sc-header">
+                    <div className="sc-name">{scenario.title}</div>
+                    {isRecommended && (
+                      <div className="badge badge-success" style={{ background: 'var(--accent-blue)', color: 'white' }}>
+                        RECOMMENDED
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div className="metric">
+                      <span className="metric-label">Overall Score</span>
+                      <span className="metric-value sm" style={{ color: scenario.overall_score >= 0.7 ? 'var(--accent-green)' : 'var(--text-primary)' }}>
+                        {Math.round(scenario.overall_score * 100)}%
+                      </span>
+                    </div>
+                    
+                    <div className="metric">
+                      <span className="metric-label">Estimated Cost</span>
+                      <span className="metric-value sm">
+                        {formatINR(scenario.estimated_cost)}
+                      </span>
+                    </div>
+
+                    <div className="metric">
+                      <span className="metric-label">Recurrence Reduction</span>
+                      <span className="metric-value sm" style={{ color: 'var(--accent-green)' }}>
+                        {Math.round(scenario.scores.recurrence_reduction * 100)}%
+                      </span>
+                    </div>
+                    
+                    <div className="metric">
+                      <span className="metric-label">Execution Time</span>
+                      <span className="metric-value sm">
+                        {scenario.estimated_duration_days} Days
+                      </span>
+                    </div>
+                  </div>
+
+                  {isRecommended && (
+                    <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-primary)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {!showRoadmap ? (
+                        <button
+                          className="btn btn-primary"
+                          style={{ width: '100%', justifyContent: 'center' }}
+                          onClick={handleGenerateRoadmap}
+                          disabled={isGeneratingRoadmap}
+                        >
+                          {isGeneratingRoadmap ? 'GENERATING...' : 'GENERATE EXECUTION ROADMAP'}
+                        </button>
+                      ) : (
+                        <button
+                          className="btn btn-success"
+                          style={{ width: '100%', justifyContent: 'center', background: 'var(--accent-green)' }}
+                          onClick={() => handleApprove(scenario)}
+                          disabled={isApproving}
+                        >
+                          {isApproving ? 'DISPATCHING...' : 'APPROVE ROADMAP & DISPATCH'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div className="metric">
-                    <span className="metric-label">Impact (Reduction)</span>
-                    <span className="metric-value sm" style={{ color: scenario.expected_recurrence_reduction > 50 ? 'var(--accent-green)' : 'var(--text-primary)' }}>
-                      {scenario.expected_recurrence_reduction}%
-                    </span>
-                  </div>
-                  
-                  <div className="metric">
-                    <span className="metric-label">Estimated Cost</span>
-                    <span className="metric-value sm">
-                      {formatINR(scenario.estimated_cost)}
-                    </span>
-                  </div>
-
-                  <div className="metric">
-                    <span className="metric-label">Risk Level</span>
-                    <span className="metric-value sm" style={{ 
-                      color: scenario.risk_level === 'LOW' ? 'var(--accent-green)' : 
-                             scenario.risk_level === 'MEDIUM' ? 'var(--accent-amber)' : 'var(--severity-critical)' 
-                    }}>
-                      {scenario.risk_level}
-                    </span>
-                  </div>
-                  
-                  <div className="metric">
-                    <span className="metric-label">Execution Time</span>
-                    <span className="metric-value sm">
-                      {scenario.execution_days} Days
-                    </span>
-                  </div>
-                </div>
-
-                {scenario.is_recommended && (
-                  <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-primary)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {!showRoadmap ? (
-                      <button
-                        className="btn btn-primary"
-                        style={{ width: '100%', justifyContent: 'center' }}
-                        onClick={handleGenerateRoadmap}
-                        disabled={isGeneratingRoadmap}
-                      >
-                        {isGeneratingRoadmap ? 'GENERATING...' : 'GENERATE EXECUTION ROADMAP'}
-                      </button>
-                    ) : (
-                      <button
-                        className="btn btn-success"
-                        style={{ width: '100%', justifyContent: 'center', background: 'var(--accent-green)' }}
-                        onClick={() => handleApprove(scenario)}
-                        disabled={isApproving}
-                      >
-                        {isApproving ? 'DISPATCHING...' : 'APPROVE ROADMAP & DISPATCH'}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: '20px 24px' }}>
@@ -245,7 +241,7 @@ function SimulationsContent() {
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 8 }}>Shift Timing</div>
                   <div style={{ fontSize: 14, color: 'var(--accent-amber)', fontWeight: 500 }}>Night Shift (23:00 - 05:00)</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>Recommended due to severe rush-hour traffic impact on {incident?.location_name || incident?.title}.</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>Recommended due to severe rush-hour traffic impact on {incident?.address ?? incident?.title}.</div>
                 </div>
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 8 }}>Resource Allocation</div>

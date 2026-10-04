@@ -2,8 +2,23 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/services/api';
-import type { InfrastructureAsset } from '@/types';
 import { CONDITION_COLORS } from '@/lib/constants';
+
+interface InfrastructureAsset {
+  id: number;
+  asset_id: string;
+  name: string;
+  asset_type: string;
+  condition: string;
+  latitude: number;
+  longitude: number;
+  location_name?: string;
+  capacity_rating?: number;
+  connected_incidents: number;
+  total_interventions?: number;
+  successful_interventions?: number;
+  maintenance_days_ago?: number;
+}
 
 export default function InfrastructurePage() {
   const [assets, setAssets] = useState<InfrastructureAsset[]>([]);
@@ -16,7 +31,7 @@ export default function InfrastructurePage() {
   async function loadData() {
     try {
       const res = await api.infrastructure.list();
-      setAssets(res.assets);
+      setAssets(res.assets as InfrastructureAsset[]);
     } catch (err) {
       console.error('Failed to load infrastructure:', err);
     } finally {
@@ -60,7 +75,7 @@ export default function InfrastructurePage() {
                 <div className="metric">
                   <span className="metric-label">Capacity</span>
                   <span className="metric-value sm">
-                    {asset.capacity_rating ? `${asset.capacity_rating.toFixed(0)}%` : '—'}
+                    {asset.capacity_rating != null ? `${asset.capacity_rating.toFixed(0)}%` : '—'}
                   </span>
                 </div>
                 <div className="metric">
@@ -72,7 +87,7 @@ export default function InfrastructurePage() {
                 <div className="metric">
                   <span className="metric-label">Maintenance</span>
                   <span className="metric-value sm">
-                    {asset.maintenance_days_ago ? `${asset.maintenance_days_ago}d ago` : '—'}
+                    {asset.maintenance_days_ago != null ? `${asset.maintenance_days_ago}d ago` : '—'}
                   </span>
                 </div>
                 <div className="metric">

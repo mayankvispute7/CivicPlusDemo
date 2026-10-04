@@ -54,7 +54,7 @@ function VerificationContent() {
     const incidentId = workOrderId;
     if (!incidentId || !verification) return;
     try {
-      await api.decisions.approve(incidentId, 'Operator'); 
+      await api.decisions.approve();
       setShowDirectiveModal(true);
     } catch (err) {
       console.error('Failed to close incident', err);

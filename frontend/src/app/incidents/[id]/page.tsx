@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/services/api';
-import type { Incident, EvidenceItem, ContributingFactorsResponse } from '@/types';
+import type { Complaint, Evidence } from '@/types';
 import ProcessingSequence from '@/components/common/ProcessingSequence';
 import {
   ANALYSIS_STEPS,
@@ -15,37 +15,47 @@ import {
   EVIDENCE_ICONS,
 } from '@/lib/constants';
 
+interface ContributingFactor {
+  id: string;
+  label: string;
+  description: string;
+  confidence: number;
+}
+
+interface ContributingFactors {
+  factors: ContributingFactor[];
+  links: { source: string; target: string; relationship: string; confidence: number }[];
+  summary: string;
+}
+
 export default function IncidentDetailPage() {
   const params = useParams();
   const router = useRouter();
   const idStr = params.id as string;
-  const id = parseInt(idStr, 10);
 
-  const [incident, setIncident] = useState<Incident | null>(null);
-  const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
-  const [factors, setFactors] = useState<ContributingFactorsResponse | null>(null);
+  const [incident, setIncident] = useState<Complaint | null>(null);
+  const [evidence, setEvidence] = useState<Evidence[]>([]);
+  const [factors, setFactors] = useState<ContributingFactors | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
-    if (!isNaN(id)) {
+    if (idStr) {
       loadData();
     }
-  }, [id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idStr]);
 
   async function loadData() {
     try {
       const [incRes, evRes, facRes] = await Promise.all([
-        api.incidents.get(id),
-        api.incidents.evidence(id),
-        api.incidents.factors(id),
+        api.incidents.get(idStr),
+        api.incidents.evidence(idStr),
+        api.incidents.factors(),
       ]);
       setIncident(incRes);
       setEvidence(evRes.evidence);
-      setFactors(facRes);
-      
-      // If incident status is DETECTED and it is the demo incident, simulate clicking analyze
-      // Wait, let the user click it for the demo flow.
+      setFactors(facRes as ContributingFactors);
     } catch (err) {
       console.error('Failed to load incident detail:', err);
     } finally {
@@ -56,8 +66,7 @@ export default function IncidentDetailPage() {
   async function handleAnalyzeStart() {
     setIsAnalyzing(true);
     try {
-      await api.incidents.analyze(id);
-      // Wait for animation to complete before updating UI
+      await api.incidents.analyze();
     } catch (err) {
       console.error('Analysis failed', err);
     }
@@ -71,7 +80,7 @@ export default function IncidentDetailPage() {
   }
 
   function handleSimulate() {
-    router.push(`/simulations?incident_id=${id}`);
+    router.push(`/simulations?incident_id=${idStr}`);
   }
 
   if (loading) {
@@ -111,17 +120,17 @@ export default function IncidentDetailPage() {
                 {incident.severity}
               </span>
               <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-                {incident.incident_id}
+                {incident.complaint_id}
               </span>
               <span className={`badge badge-${isAnalyzed ? 'success' : 'warning'}`}>
-                {incident.status}
+                {incident.status ?? 'DETECTED'}
               </span>
             </div>
             <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 8px 0', color: 'var(--text-primary)' }}>
               {incident.title}
             </h1>
             <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-              {incident.location_name} · Reported {formatDateTime(incident.reported_at)} ({timeAgo(incident.reported_at)})
+              {incident.address ?? incident.site_id} · Reported {formatDateTime(incident.reported_at)} ({timeAgo(incident.reported_at)})
             </div>
           </div>
           
@@ -167,10 +176,10 @@ export default function IncidentDetailPage() {
                   <div className="panel-body" style={{ background: 'var(--bg-secondary)' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                       {evidence.map((item) => (
-                        <div key={item.id} className="evidence-card" style={{ background: 'var(--bg-card)' }}>
+                        <div key={item.evidence_id} className="evidence-card" style={{ background: 'var(--bg-card)' }}>
                           <div className="ev-header">
-                            <span className="ev-icon">{EVIDENCE_ICONS[item.evidence_type] || '📄'}</span>
-                            <span className="ev-type">{item.evidence_type.replace('_', ' ')}</span>
+                            <span className="ev-icon">{EVIDENCE_ICONS[item.type] || '📄'}</span>
+                            <span className="ev-type">{item.type.replace('_', ' ')}</span>
                           </div>
                           <div className="ev-title">{item.title}</div>
                           <div className="ev-desc">{item.description}</div>
@@ -203,21 +212,21 @@ export default function IncidentDetailPage() {
                   <div className="metric">
                     <span className="metric-label">Recurrence</span>
                     <span className="metric-value sm">
-                      {incident.recurrence_count}
+                      {incident.recurrence_count ?? '—'}
                       <span className="metric-unit"> / 30d</span>
                     </span>
                   </div>
                   <div className="metric">
                     <span className="metric-label">Rainfall Exposure</span>
                     <span className="metric-value sm">
-                      {incident.rainfall_mm || '—'}
+                      {incident.rainfall_mm ?? '—'}
                       <span className="metric-unit"> mm/24h</span>
                     </span>
                   </div>
                   <div className="metric">
-                    <span className="metric-label">Nearby Asset</span>
+                    <span className="metric-label">Site ID</span>
                     <span className="metric-value sm" style={{ fontFamily: 'var(--font-mono)' }}>
-                      {incident.nearby_asset_id || '—'}
+                      {incident.site_id || '—'}
                     </span>
                   </div>
                 </div>

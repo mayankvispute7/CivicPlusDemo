@@ -2,14 +2,28 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/services/api';
-import type { InsightsResponse } from '@/types';
-import { formatDateTime } from '@/lib/constants';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell 
 } from 'recharts';
 
+interface InstitutionalMemoryItem {
+  asset_id: string;
+  asset_name: string;
+  total_interventions: number;
+  successful_interventions: number;
+  avg_recurrence_reduction: number;
+  intervention_history: unknown[];
+  future_recommendation: string;
+}
+
+interface InsightsData {
+  outcomes: unknown[];
+  institutional_memory: InstitutionalMemoryItem[];
+  system_learning: Record<string, unknown>;
+}
+
 export default function InsightsPage() {
-  const [insights, setInsights] = useState<InsightsResponse | null>(null);
+  const [insights, setInsights] = useState<InsightsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,7 +33,7 @@ export default function InsightsPage() {
   async function loadData() {
     try {
       const res = await api.insights.get();
-      setInsights(res);
+      setInsights(res as InsightsData);
     } catch (err) {
       console.error('Failed to load insights:', err);
     } finally {
@@ -33,7 +47,7 @@ export default function InsightsPage() {
   // Chart data: Institutional Memory (Asset Intervention Effectiveness)
   const chartData = insights.institutional_memory
     .slice(0, 10)
-    .map(mem => ({
+    .map((mem) => ({
       name: mem.asset_id,
       reduction: mem.avg_recurrence_reduction,
       successes: mem.successful_interventions,
@@ -121,7 +135,7 @@ export default function InsightsPage() {
             <h3 className="panel-title">Asset Watchlist</h3>
           </div>
           <div className="panel-body" style={{ flex: 1, padding: 0, overflowY: 'auto', maxHeight: 360 }}>
-            {insights.institutional_memory.map(mem => (
+            {insights.institutional_memory.map((mem) => (
               <div key={mem.asset_id} style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-primary)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{mem.asset_name}</span>

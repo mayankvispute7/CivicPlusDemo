@@ -73,9 +73,10 @@ export default function CommandMap({ incidents, selectedIncident, onIncidentSele
     if (!layers.incidents) return;
 
     incidents.forEach((inc) => {
+      if (inc.latitude == null || inc.longitude == null) return;
       const color = SEVERITY_COLORS[inc.severity] || '#6b7280';
-      const isSelected = selectedIncident?.id === inc.id;
-      const isPrimary = inc.incident_id === 'INC-1042';
+      const isSelected = selectedIncident?.complaint_id === inc.complaint_id;
+      const isPrimary = inc.complaint_id === 'CMP-2026-0101';
       const size = isSelected ? 20 : isPrimary ? 16 : 12;
 
       const icon = L.divIcon({
@@ -94,18 +95,17 @@ export default function CommandMap({ incidents, selectedIncident, onIncidentSele
         iconAnchor: [size / 2, size / 2],
       });
 
-      const marker = L.marker([inc.latitude, inc.longitude], { icon })
+      const marker = L.marker([inc.latitude as number, inc.longitude as number], { icon })
         .bindPopup(`
           <div style="min-width:180px">
             <div style="font-size:10px;color:#9aa0b4;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">
-              ${inc.incident_id}
+              ${inc.complaint_id}
             </div>
             <div style="font-size:13px;font-weight:600;margin-bottom:6px">${inc.title}</div>
             <div style="display:flex;gap:12px;font-size:11px;color:#9aa0b4">
               <span>Severity: <b style="color:${color}">${inc.severity}</b></span>
-              <span>Rainfall: <b>${inc.rainfall_mm || '—'}mm</b></span>
+              <span>Rainfall: <b>${inc.rainfall_mm ?? '—'}mm</b></span>
             </div>
-            ${inc.nearby_asset_id ? `<div style="font-size:11px;color:#9aa0b4;margin-top:4px">Asset: <b>${inc.nearby_asset_id}</b></div>` : ''}
           </div>
         `)
         .on('click', () => onIncidentSelect(inc));
@@ -117,7 +117,8 @@ export default function CommandMap({ incidents, selectedIncident, onIncidentSele
   // Pan to selected incident
   useEffect(() => {
     if (!mapRef.current || !selectedIncident) return;
-    mapRef.current.panTo([selectedIncident.latitude, selectedIncident.longitude], { animate: true, duration: 0.5 });
+    if (selectedIncident.latitude == null || selectedIncident.longitude == null) return;
+    mapRef.current.panTo([selectedIncident.latitude as number, selectedIncident.longitude as number], { animate: true, duration: 0.5 });
   }, [selectedIncident]);
 
   async function loadInfrastructure(map: L.Map) {

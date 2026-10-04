@@ -26,15 +26,15 @@ function OverviewContent() {
   async function loadData() {
     try {
       const res = await api.incidents.list();
-      setIncidents(res.incidents);
+      setIncidents(res.complaints);
       
       const selectId = searchParams.get('select');
       if (selectId) {
-        const target = res.incidents.find((i) => i.incident_id === selectId);
+        const target = res.complaints.find((i) => i.incident_id === selectId);
         if (target) setSelectedIncident(target);
       } else {
-        // Auto-select the primary incident
-        const primary = res.incidents.find((i) => i.incident_id === 'INC-1042');
+        // Auto-select the primary complaint
+        const primary = res.complaints.find((i) => i.complaint_id === 'CMP-2026-0101');
         if (primary) setSelectedIncident(primary);
       }
     } catch (err) {
@@ -56,7 +56,7 @@ function OverviewContent() {
 
   // Aggregate stats
   const activeIncidents = incidents.filter(
-    (i) => ['DETECTED', 'ANALYZING', 'ANALYZED'].includes(i.status)
+    (i) => ['DETECTED', 'ANALYZING', 'ANALYZED'].includes(i.status ?? '')
   ).length;
   const criticalCount = incidents.filter((i) => i.severity === 'CRITICAL').length;
   const highCount = incidents.filter((i) => i.severity === 'HIGH').length;
@@ -231,9 +231,9 @@ function IncidentPanel({ incident, onAnalyze }: { incident: Incident; onAnalyze:
           <span className="metric-value sm">{incident.affected_roads}</span>
         </div>
         <div className="metric">
-          <span className="metric-label">Nearby Drain</span>
+          <span className="metric-label">Site ID</span>
           <span className="metric-value sm" style={{ fontFamily: 'var(--font-mono)' }}>
-            {incident.nearby_asset_id || '—'}
+            {incident.site_id || '—'}
           </span>
         </div>
         <div className="metric">

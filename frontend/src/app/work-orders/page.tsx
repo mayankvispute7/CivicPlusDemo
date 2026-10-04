@@ -29,7 +29,7 @@ function WorkOrdersContent() {
     }
   }
 
-  async function handleUpdateStatus(id: number, status: string) {
+  async function handleUpdateStatus(id: string, status: string) {
     try {
       await api.workOrders.updateStatus(id, status);
       loadData();
@@ -102,7 +102,7 @@ function WorkOrdersContent() {
                   <button 
                     className="btn btn-primary" 
                     style={{ width: '100%', justifyContent: 'center' }}
-                    onClick={() => handleUpdateStatus(wo.id, 'IN_PROGRESS')}
+                    onClick={() => handleUpdateStatus(wo.work_order_id, 'IN_PROGRESS')}
                   >
                     DISPATCH TEAM
                   </button>
@@ -111,7 +111,7 @@ function WorkOrdersContent() {
                   <button 
                     className="btn btn-warning" 
                     style={{ width: '100%', justifyContent: 'center', background: 'var(--accent-amber)', color: '#000', borderColor: 'var(--accent-amber)' }}
-                    onClick={() => handleUpdateStatus(wo.id, 'COMPLETED')}
+                    onClick={() => handleUpdateStatus(wo.work_order_id, 'COMPLETED')}
                   >
                     MARK AS COMPLETED (SIMULATE FIELD APP)
                   </button>
