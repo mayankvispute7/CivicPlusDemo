@@ -1,223 +1,428 @@
 /**
- * CIVIC PULSE — TypeScript interfaces
- * Typed contracts matching backend Pydantic schemas
+ * CIVIC PULSE — TypeScript Models
+ * Strictly conforming to DATA_CONTRACT.md and API_CONTRACT.md.
+ * 
+ * Stable identifiers:
+ * - complaint_id
+ * - site_id
+ * - cluster_id
+ * - case_id
+ * - evidence_id
+ * - hypothesis_id
+ * - intervention_id
+ * - work_order_id
+ * - task_id
+ * - verification_id
+ * - outcome_id
+ * - memory_id
  */
 
-// ─── Enums ───────────────────────────────────────────────────────────────────
+// ─── Data Truth & Provenance ────────────────────────────────────────────────
+
+export type DataTruth = 
+  | 'REAL_DATA'
+  | 'SYNTHETIC_DATA'
+  | 'MODEL_ESTIMATION'
+  | 'AI_GENERATED_TEXT'
+  | 'EVIDENCE'
+  | 'ASSUMPTION';
+
+// ─── Enums & Statuses ───────────────────────────────────────────────────────
 
 export type SeverityLevel = 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
-export type IncidentStatus = 
-  | 'DETECTED' | 'ANALYZING' | 'ANALYZED' | 'SIMULATING' | 'SIMULATED'
-  | 'RECOMMENDED' | 'APPROVED' | 'IN_PROGRESS' | 'COMPLETED' | 'VERIFIED' | 'CLOSED';
-export type AssetType = 'STORMWATER_DRAIN' | 'ROAD_SEGMENT' | 'CULVERT' | 'MANHOLE' | 'PUMP_STATION' | 'RETENTION_BASIN';
-export type AssetCondition = 'GOOD' | 'FAIR' | 'CAPACITY_CONSTRAINED' | 'DEGRADED' | 'CRITICAL';
-export type EvidenceType = 'RAINFALL' | 'TERRAIN' | 'DRAINAGE' | 'ROAD_NETWORK' | 'HISTORICAL_RECURRENCE' | 'SATELLITE' | 'FIELD_OBSERVATION' | 'IMAGE' | 'SENSOR';
-export type WorkOrderStatus = 'CREATED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'VERIFIED' | 'CLOSED';
-export type VerificationStatus = 'PENDING' | 'IN_PROGRESS' | 'VERIFIED' | 'REVIEW_REQUIRED' | 'REWORK_REQUIRED';
 
-// ─── Incident ────────────────────────────────────────────────────────────────
+export type ClusterStatus = 'ACTIVE' | 'INVESTIGATING' | 'RESOLVED' | 'MONITORING';
 
-export interface Incident {
-  id: number;
-  incident_id: string;
+export type CaseStatus = 
+  | 'DETECTED'
+  | 'INVESTIGATING'
+  | 'ANALYZED'
+  | 'SIMULATING'
+  | 'DECIDED'
+  | 'EXECUTING'
+  | 'VERIFIED'
+  | 'RESOLVED';
+
+export type EvidenceType = 
+  | 'COMPLAINT'
+  | 'RAINFALL'
+  | 'TERRAIN'
+  | 'DRAINAGE'
+  | 'ROAD'
+  | 'SATELLITE'
+  | 'FIELD_PHOTO'
+  | 'HISTORICAL_INCIDENT'
+  | 'WORK_ORDER'
+  | 'OUTCOME'
+  | 'CROSS_CITY_CASE';
+
+export type WorkOrderStatus = 
+  | 'CREATED'
+  | 'ASSIGNED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'VERIFIED'
+  | 'CLOSED';
+
+export type WorkOrderApprovalState = 
+  | 'DRAFT'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CANCELLED';
+
+export type TaskStatus = 
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'BLOCKED'
+  | 'COMPLETED'
+  | 'ESCALATED';
+
+export type VerificationStatus = 
+  | 'VERIFIED'
+  | 'REVIEW_REQUIRED'
+  | 'REJECTED';
+
+export type VerificationConsistency = 'HIGH' | 'LOW';
+
+export type OutcomeStatus = 
+  | 'IMPROVED'
+  | 'UNCHANGED'
+  | 'RECURRENCE'
+  | 'INCONCLUSIVE';
+
+export type ComparisonResult = 
+  | 'MATCHED'
+  | 'PARTIALLY_MATCHED'
+  | 'MISMATCHED'
+  | 'INCONCLUSIVE';
+
+// ─── 1. Complaint ───────────────────────────────────────────────────────────
+
+export interface Complaint {
+  complaint_id: string;
   title: string;
-  description?: string;
-  location_name?: string;
-  latitude: number;
-  longitude: number;
-  severity: SeverityLevel;
-  status: IncidentStatus;
-  source_type?: string;
-  rainfall_mm?: number;
-  evidence_confidence?: number;
-  recurrence_count: number;
-  affected_roads: number;
-  nearby_asset_id?: string;
+  description: string;
+  incident_type: string;
   reported_at: string;
-  analyzed_at?: string;
-  resolved_at?: string;
-  created_at: string;
-}
-
-export interface IncidentListResponse {
-  incidents: Incident[];
-  total: number;
-}
-
-// ─── Infrastructure ──────────────────────────────────────────────────────────
-
-export interface InfrastructureAsset {
-  id: number;
-  asset_id: string;
-  name: string;
-  asset_type: AssetType;
-  condition: AssetCondition;
-  latitude: number;
-  longitude: number;
-  location_name?: string;
-  capacity_rating?: number;
-  last_maintenance?: string;
-  maintenance_days_ago?: number;
-  connected_incidents: number;
-  recurrence_level?: string;
-  total_interventions: number;
-  successful_interventions: number;
-  avg_recurrence_reduction?: number;
-}
-
-export interface InfrastructureListResponse {
-  assets: InfrastructureAsset[];
-  total: number;
-}
-
-// ─── Evidence ────────────────────────────────────────────────────────────────
-
-export interface EvidenceItem {
-  id: number;
-  evidence_type: EvidenceType;
-  title: string;
-  description?: string;
-  source?: string;
-  confidence?: number;
+  site_id: string;
+  severity: SeverityLevel;
+  source: string;
+  data_truth: DataTruth;
+  cluster_id?: string;
   latitude?: number;
   longitude?: number;
+  address?: string;
+  attachments?: string[];
+  // Legacy compatibility fields
+  id?: string | number;
+  incident_id?: string;
+  location_name?: string;
+  rainfall_mm?: number;
+  evidence_confidence?: number;
+  recurrence_count?: number;
+  affected_roads?: number;
+  status?: string;
+}
+
+export interface ComplaintListResponse {
+  complaints: Complaint[];
+  total: number;
+}
+
+// ─── 2. Site ────────────────────────────────────────────────────────────────
+
+export interface Site {
+  site_id: string;
+  latitude: number;
+  longitude: number;
+  site_label: string;
+  road_segment_id?: string;
+  h3_cell?: string;
+  ward?: string;
+  neighborhood?: string;
+  drain_ids?: string[];
+  building_ids?: string[];
+}
+
+// ─── 3. Failure Cluster ─────────────────────────────────────────────────────
+
+export interface FailureCluster {
+  cluster_id: string;
+  case_id?: string;
+  title: string;
+  complaint_count: number;
+  incident_count: number;
+  confidence: number;
+  site_id: string;
+  status: ClusterStatus | string;
+  member_complaint_ids: string[];
+  location_name?: string;
+  failure_type?: string;
+  grouping_explanation?: string;
+  recurrence_level?: 'HIGH' | 'MEDIUM' | 'LOW';
+  is_high_impact?: boolean;
+  is_recurring?: boolean;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface FailureClusterListResponse {
+  clusters: FailureCluster[];
+  total: number;
+}
+
+// ─── 4. Case & Failure Fingerprint ──────────────────────────────────────────
+
+export interface CaseFingerprint {
+  summary: string;
+  complaint_count: number;
+  incident_count: number;
+  confidence: number;
+  primary_cause: string;
+  rainfall_threshold_mm?: number;
+  catchment_slope_pct?: number;
+  drain_capacity_deficit_pct?: number;
+  data_truth: DataTruth;
+}
+
+export interface FailureHypothesis {
+  hypothesis_id: string;
+  case_id: string;
+  title: string;
+  confidence: number;
+  status: 'CONFIRMED' | 'SUPPORTED' | 'INVESTIGATING' | 'REJECTED';
+  evidence_ids: string[];
+}
+
+export interface FailureChainNode {
+  id: string;
+  label: string;
+  type: 'trigger' | 'hydrology' | 'terrain' | 'infrastructure' | 'hazard' | 'impact' | 'symptom';
+  evidence_ids: string[];
+  status: 'confirmed' | 'probable' | 'investigating';
+  description?: string;
+}
+
+export interface FailureChainEdge {
+  source: string;
+  target: string;
+  relationship: string;
+}
+
+export interface FailureChain {
+  nodes: FailureChainNode[];
+  edges: FailureChainEdge[];
+}
+
+export interface HistoryEvent {
+  year: string;
+  date: string;
+  event: string;
+  type: 'COMPLAINT' | 'INTERVENTION' | 'RECURRENCE' | 'INVESTIGATION';
+  evidence_id?: string;
+  notes?: string;
+}
+
+export interface Case {
+  case_id: string;
+  cluster_id: string;
+  site_id: string;
+  title: string;
+  failure_type: string;
+  status: CaseStatus | string;
+  created_at: string;
+  fingerprint?: CaseFingerprint;
+  hypotheses?: FailureHypothesis[];
+  failure_chain?: FailureChain;
+  history?: HistoryEvent[];
+  decision_readiness?: DecisionReadiness;
+  selected_intervention?: Intervention;
+  outcome?: Outcome;
+}
+
+export interface CaseListResponse {
+  cases: Case[];
+  total: number;
+}
+
+// ─── 5. Evidence Ledger ─────────────────────────────────────────────────────
+
+export interface Evidence {
+  evidence_id: string;
+  case_id: string;
+  type: EvidenceType;
+  title: string;
+  source: string;
+  confidence: number;
+  data_truth: DataTruth;
+  description?: string;
   observed_at?: string;
   value?: string;
   unit?: string;
   image_url?: string;
-  metadata_json?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface EvidenceListResponse {
-  evidence: EvidenceItem[];
+  evidence: Evidence[];
   total: number;
 }
 
-// ─── Contributing Factors ────────────────────────────────────────────────────
+// ─── 6. Satellite / Earth Observation ───────────────────────────────────────
 
-export interface ContributingFactor {
-  id: string;
-  label: string;
+export interface SatelliteObservation {
+  observation_id: string;
+  case_id: string;
+  satellite: 'Sentinel-1 SAR' | 'Sentinel-2 Multispectral' | 'CartoDEM';
+  acquisition_date: string;
+  label: 'INDEPENDENT SPATIAL EVIDENCE';
+  metric_name: string;
+  metric_value: string;
+  supporting_confidence: number;
+  data_truth: DataTruth;
   description: string;
-  confidence: number;
-  evidence_type?: string;
-  severity?: string;
+  imagery_url?: string;
+  baseline_imagery_url?: string;
+  comparison_notes: string;
 }
 
-export interface FactorLink {
-  source: string;
-  target: string;
-  relationship: string;
-  confidence: number;
-}
+// ─── 7. Intervention Lab & Constraints ──────────────────────────────────────
 
-export interface ContributingFactorsResponse {
-  factors: ContributingFactor[];
-  links: FactorLink[];
-  summary: string;
-}
-
-// ─── Rainfall ────────────────────────────────────────────────────────────────
-
-export interface RainfallDataPoint {
-  date: string;
-  rainfall_mm: number;
-  intensity?: string;
-}
-
-export interface RainfallTimelineResponse {
-  data: RainfallDataPoint[];
-  station: string;
-  period_days: number;
-}
-
-// ─── Historical Incidents ────────────────────────────────────────────────────
-
-export interface HistoricalIncident {
-  id: number;
-  incident_id?: string;
-  location_name?: string;
-  severity?: string;
-  asset_id?: string;
-  rainfall_mm?: number;
-  occurred_at: string;
-  resolved: boolean;
-  resolution_hours?: number;
-}
-
-// ─── Simulation ──────────────────────────────────────────────────────────────
-
-export interface ScenarioResult {
-  id: number;
-  scenario_name: string;
-  scenario_label?: string;
+export interface InterventionScore {
   impact_score: number;
-  impact_label?: string;
-  estimated_cost: number;
-  risk_level: string;
-  risk_score?: number;
-  feasibility_score: number;
-  feasibility_label?: string;
-  expected_recurrence_reduction: number;
-  execution_days?: number;
+  budget_fit: number;
+  deadline_fit: number;
+  evidence_confidence: number;
+  recurrence_reduction: number;
   overall_score: number;
-  is_recommended: boolean;
-  details?: Record<string, unknown>;
 }
 
-export interface Simulation {
-  id: number;
-  simulation_id: string;
-  incident_id: number;
-  status: string;
-  scenarios: ScenarioResult[];
-  started_at?: string;
-  completed_at?: string;
-  ai_recommendation_reason?: string;
+export interface OperationalConstraints {
+  budget_limit: number;
+  deadline_days: number;
+  available_workers: number;
+  available_equipment: string[];
+  available_materials?: string[];
+  operational_restrictions?: string[];
+  weather_constraints?: string[];
 }
-
-// ─── Decision / Intervention ─────────────────────────────────────────────────
 
 export interface Intervention {
-  id: number;
-  incident_id: number;
-  simulation_id?: number;
-  intervention_type: string;
-  target_asset_id?: string;
-  priority_score: number;
-  urgency_score?: number;
-  impact_score?: number;
-  recurrence_score?: number;
-  feasibility_score?: number;
-  cost_score?: number;
-  reasons: string[];
-  status: string;
-  approved_by?: string;
-  approved_at?: string;
-  created_at: string;
+  intervention_id: string;
+  case_id: string;
+  title: string;
+  description: string;
+  ranking_tier: 'RECOMMENDED' | 'ALTERNATIVE' | 'HIGH_IMPACT';
+  estimated_cost: number;
+  estimated_duration_days: number;
+  workers_required: number;
+  overall_score: number;
+  scores: InterventionScore;
+  equipment?: string[];
+  materials?: string[];
+  complaints_addressed?: number;
+  expected_risk_reduction?: number;
+  recurrence_outlook?: string;
+  maintenance_burden?: string;
+  future_savings?: number;
+  budget_fit?: number;
+  deadline_fit?: number;
+  // Legacy aliases
+  id?: number | string;
+  scenario_name?: string;
+  is_recommended?: boolean;
 }
 
-// ─── Work Order ──────────────────────────────────────────────────────────────
+export interface RankedInterventionsResponse {
+  ranked_interventions: Intervention[];
+  active_constraints?: OperationalConstraints;
+}
+
+// ─── 8. Counterfactual & Decision Brief ─────────────────────────────────────
+
+export interface CounterfactualScenario {
+  id: string;
+  name: string;
+  expected_recurrence: string;
+  estimated_cost: number;
+  duration_days: number;
+  impact_summary: string;
+  exposure_summary: string;
+  future_savings: number;
+  assumptions: string[];
+  is_status_quo?: boolean;
+  score: number;
+}
+
+export interface CounterfactualResponse {
+  case_id: string;
+  scenarios: CounterfactualScenario[];
+}
+
+export interface DecisionReadiness {
+  ready: boolean;
+  evidence_sufficiency: number;
+  stakeholder_signoff_required: boolean;
+  recommended_action: string;
+}
+
+export interface DecisionBrief {
+  case_id: string;
+  problem: string;
+  why_it_happened: string;
+  evidence_summary: string[];
+  history_summary: string;
+  options_considered: number;
+  recommended_option: Intervention;
+  why_recommended: string;
+  total_cost: number;
+  timeline_days: number;
+  expected_outcome: string;
+  risks: string[];
+  assumptions: string[];
+  human_approval_required: boolean;
+}
+
+// ─── 9. Work Order & Execution ──────────────────────────────────────────────
+
+export interface ExecutionTask {
+  task_id: string;
+  work_order_id: string;
+  title: string;
+  sequence: number;
+  status: TaskStatus;
+  planned_duration_hours: number;
+  actual_duration_hours?: number;
+  workers?: string[];
+  equipment?: string[];
+  materials?: string[];
+  dependencies?: string[];
+  planned_start?: string;
+  planned_end?: string;
+  actual_start?: string;
+  actual_end?: string;
+  notes?: string;
+}
 
 export interface WorkOrder {
-  id: number;
   work_order_id: string;
-  incident_id: number;
-  intervention_id?: number;
-  intervention_type?: string;
-  asset_id?: string;
-  asset_name?: string;
-  location_name?: string;
-  priority?: string;
+  intervention_id: string;
+  case_id?: string;
+  title?: string;
   assigned_team?: string;
   status: WorkOrderStatus;
-  expected_outcome?: string;
-  required_evidence?: string[];
-  notes?: string;
+  approval_state: WorkOrderApprovalState;
   created_at: string;
-  assigned_at?: string;
-  started_at?: string;
-  completed_at?: string;
+  approved_by?: string;
+  approved_at?: string;
+  tasks?: ExecutionTask[];
+  // Legacy aliases
+  id?: number | string;
+  intervention_type?: string;
+  asset_name?: string;
+  location_name?: string;
+  expected_outcome?: string;
 }
 
 export interface WorkOrderListResponse {
@@ -225,111 +430,201 @@ export interface WorkOrderListResponse {
   total: number;
 }
 
-// ─── Verification ────────────────────────────────────────────────────────────
+export interface ReplanMitigationOption {
+  option_id: string;
+  title: string;
+  eta_minutes?: number;
+  additional_cost?: number;
+  preserves_deadline: boolean;
+  schedule_slip_hours?: number;
+}
+
+export interface ReplanResponse {
+  work_order_id: string;
+  replan_id?: string;
+  deadline_risk: 'LOW' | 'MEDIUM' | 'HIGH';
+  reason: string;
+  projected_overrun_hours: number;
+  critical_path_impact: string;
+  mitigation_options: ReplanMitigationOption[];
+  requires_human_approval: boolean;
+}
+
+// ─── 10. Field Verification ─────────────────────────────────────────────────
+
+export interface FieldVerificationChecks {
+  gps_match: boolean;
+  gps_deviation_meters: number;
+  timestamp_match: boolean;
+  duplicate_check: boolean;
+  visual_change_score: number;
+  notes: string;
+}
 
 export interface VerificationRecord {
-  id: number;
-  work_order_id: number;
+  verification_id: string;
+  work_order_id: string;
+  task_id?: string;
+  captured_at: string;
+  latitude: number;
+  longitude: number;
+  image_url?: string;
   status: VerificationStatus;
+  overall_consistency: VerificationConsistency;
+  checks: FieldVerificationChecks;
+  action_taken?: 'ACCEPT' | 'REQUEST_RECAPTURE' | 'ESCALATE';
+  // Legacy compatibility fields
+  id?: number | string;
   before_image_url?: string;
   after_image_url?: string;
+  physical_change_detected?: boolean;
   condition_improvement?: number;
   evidence_confidence?: number;
-  physical_change_detected: boolean;
   analysis_details?: Record<string, unknown>;
-  verified_at?: string;
-  verified_by?: string;
-  notes?: string;
 }
 
-// ─── Outcome / Learning ─────────────────────────────────────────────────────
+// ─── 11. Outcome & Prediction vs Reality ────────────────────────────────────
 
 export interface Outcome {
-  id: number;
-  incident_id: number;
-  work_order_id?: number;
-  asset_id?: string;
-  expected_reduction?: number;
-  observed_reduction?: number;
-  difference?: number;
-  intervention_type?: string;
-  intervention_effective: boolean;
-  recurrence_before?: number;
-  recurrence_after?: number;
-  future_recommendation?: string;
-  learning_summary?: string;
-  recorded_at: string;
+  outcome_id: string;
+  case_id: string;
+  observed_at: string;
+  status: OutcomeStatus;
+  prediction: {
+    recurrence_probability: number;
+    expected_risk_reduction: number;
+  };
+  observed: {
+    recurrence: boolean;
+    rainfall_event_date?: string;
+    rainfall_event_depth_mm?: number;
+  };
+  comparison: ComparisonResult;
+  work_completed: boolean;
+  problem_resolved: boolean;
+  notes: string;
 }
 
-export interface InstitutionalMemory {
-  asset_id: string;
-  asset_name: string;
-  total_interventions: number;
-  successful_interventions: number;
-  avg_recurrence_reduction: number;
-  intervention_history: Record<string, unknown>[];
-  future_recommendation: string;
+// ─── 12. Infrastructure Memory ──────────────────────────────────────────────
+
+export interface SiteMemoryPattern {
+  pattern: string;
+  durability_assessment: string;
+  advice: string;
 }
 
-export interface InsightsResponse {
-  outcomes: Outcome[];
-  institutional_memory: InstitutionalMemory[];
-  system_learning: Record<string, unknown>;
+export interface InfrastructureMemory {
+  memory_id: string;
+  site_id: string;
+  site_label: string;
+  total_incidents: number;
+  recurring_count: number;
+  recurrence_interval_days: number;
+  past_interventions_count: number;
+  recurrence_after_intervention_count: number;
+  successful_outcomes_count: number;
+  cases: string[];
+  interventions: string[];
+  outcomes: string[];
+  learned_patterns: SiteMemoryPattern[];
 }
 
-// ─── Audit ───────────────────────────────────────────────────────────────────
-
-export interface AuditEntry {
-  id: number;
-  incident_id?: number;
-  action: string;
-  description?: string;
-  actor: string;
-  timestamp: string;
-  metadata_json?: Record<string, unknown>;
+export interface CrossCityCase {
+  case_id: string;
+  city: string;
+  corridor: string;
+  problem_type: string;
+  intervention: string;
+  approx_cost_inr: number;
+  reported_outcome: string;
+  recurrence_observed: boolean;
+  durability_months: number;
+  applicability_notes: string;
+  source: string;
+  data_truth: DataTruth;
 }
 
-// ─── System Status ───────────────────────────────────────────────────────────
+// ─── 13. System Status & Intake Pipeline ────────────────────────────────────
 
 export interface SystemStatus {
   system: string;
   region: string;
   data_mode: string;
-  active_incidents: number;
-  total_incidents: number;
-  infrastructure_assets: number;
-  active_work_orders: number;
+  complaints_processed: number;
+  failure_clusters: number;
+  recurring_failures: number;
+  high_impact_failures: number;
+  unresolved_recurring: number;
+  completed_interventions: number;
+  recurrence_cases: number;
+  // Legacy aliases
+  active_incidents?: number;
+  total_incidents?: number;
+  infrastructure_assets?: number;
+  active_work_orders?: number;
 }
 
-// ─── GeoJSON ─────────────────────────────────────────────────────────────────
+export interface IntakeJobStatus {
+  job_id: string;
+  filename: string;
+  status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  step: 'PDF' | 'EXTRACTION' | 'NORMALIZED_COMPLAINTS' | 'GEOSPATIAL_MAPPING' | 'CLUSTERING' | 'COMPLETED';
+  progress_percentage: number;
+  complaints_extracted?: number;
+  clusters_generated?: number;
+  recurring_high_impact?: number;
+  created_at: string;
+  completed_at?: string;
+}
 
+// ─── 14. UI & Map State ─────────────────────────────────────────────────────
+
+export type SpatialContextLevel = 
+  | '50m_site'
+  | '250m_local'
+  | 'catchment'
+  | 'corridor'
+  | 'neighborhood';
+
+export interface MapLayerState {
+  complaints: boolean;
+  clusters: boolean;
+  roads: boolean;
+  drainage: boolean;
+  terrain: boolean;
+  buildings: boolean;
+  critical_facilities: boolean;
+  satellite: boolean;
+}
+
+export type AppMode = 'operator' | 'demo';
+
+// ─── 15. Legacy Aliases for Seamless Backward Compatibility ─────────────────
+
+export type Incident = Complaint;
+export type IncidentListResponse = ComplaintListResponse;
+export type ScenarioResult = Intervention;
+export interface Simulation {
+  id: number;
+  simulation_id?: string;
+  incident_id?: number;
+  status?: string;
+  scenarios: Intervention[];
+}
+export interface ProcessingStep {
+  label: string;
+  status: 'pending' | 'running' | 'complete';
+  duration?: number;
+}
 export interface GeoJSONFeature {
   type: 'Feature';
   geometry: {
     type: string;
-    coordinates: number[];
+    coordinates: number[] | number[][];
   };
   properties: Record<string, unknown>;
 }
-
 export interface GeoJSONCollection {
   type: 'FeatureCollection';
   features: GeoJSONFeature[];
-}
-
-// ─── Processing Steps ────────────────────────────────────────────────────────
-
-export interface ProcessingStep {
-  label: string;
-  status: 'pending' | 'running' | 'complete';
-  duration?: number; // ms
-}
-
-// ─── Demo Mode ───────────────────────────────────────────────────────────────
-
-export type AppMode = 'operator' | 'demo';
-
-export interface DemoState {
-  currentStage: 'overview' | 'incident' | 'analysis' | 'simulation' | 'decision' | 'work-order' | 'verification' | 'learning';
-  incidentId: number;
 }
